@@ -5,7 +5,8 @@
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+// #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cv_bridge/cv_bridge.h>
 
 #ifdef CUDA
@@ -18,7 +19,7 @@ namespace ph = std::placeholders;
 namespace octomap_depth_mapping
 {
 
-OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string node_name): 
+OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string node_name):
     Node(node_name, options),
     fx(524),
     fy(524),
@@ -55,18 +56,18 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
 
     // bind subs with ugly way
-    sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image, 
+    sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image,
         geometry_msgs::msg::PoseStamped>>(depth_sub_, pose_sub_, 3);
     sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
 
     // services
-    octomap_srv_ = this->create_service<octomap_msgs::srv::GetOctomap>("get_octomap", 
+    octomap_srv_ = this->create_service<octomap_msgs::srv::GetOctomap>("get_octomap",
         std::bind(&OctomapDemap::octomap_srv, this, ph::_1, ph::_2));
 
-    reset_srv_ = this->create_service<std_srvs::srv::Empty>("reset", 
+    reset_srv_ = this->create_service<std_srvs::srv::Empty>("reset",
         std::bind(&OctomapDemap::reset_srv, this, ph::_1, ph::_2));
 
-    save_srv_ = this->create_service<std_srvs::srv::Empty>("save", 
+    save_srv_ = this->create_service<std_srvs::srv::Empty>("save",
         std::bind(&OctomapDemap::save_srv, this, ph::_1, ph::_2));
 
     double resolution = this->declare_parameter("resolution", 0.1);
@@ -92,7 +93,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     {
         for(int j = 0; j < height; j+=padding)
         {
-            pc_count+=3;   
+            pc_count+=3;
         }
     }
 
@@ -177,16 +178,16 @@ OctomapDemap::~OctomapDemap()
 }
 
 bool OctomapDemap::octomap_srv(
-    const std::shared_ptr<octomap_msgs::srv::GetOctomap::Request> req, 
+    const std::shared_ptr<octomap_msgs::srv::GetOctomap::Request>,
     std::shared_ptr<octomap_msgs::srv::GetOctomap::Response> res)
 {
     return msg_from_ocmap(res->map);
 }
 
 bool OctomapDemap::save_srv(
-    const std::shared_ptr<std_srvs::srv::Empty::Request> req, 
-    const std::shared_ptr<std_srvs::srv::Empty::Response> res)
-{   
+    const std::shared_ptr<std_srvs::srv::Empty::Request>,
+    const std::shared_ptr<std_srvs::srv::Empty::Response>)
+{
     if(save_ocmap())
     {
         RCLCPP_INFO_STREAM(this->get_logger(), "Octomap is saved to " << filename);
@@ -200,8 +201,8 @@ bool OctomapDemap::save_srv(
 }
 
 bool OctomapDemap::reset_srv(
-    const std::shared_ptr<std_srvs::srv::Empty::Request> req, 
-    const std::shared_ptr<std_srvs::srv::Empty::Response> res)
+    const std::shared_ptr<std_srvs::srv::Empty::Request>,
+    const std::shared_ptr<std_srvs::srv::Empty::Response>)
 {
     ocmap->clear();
     RCLCPP_INFO(this->get_logger(), "Octomap reset");
@@ -209,7 +210,7 @@ bool OctomapDemap::reset_srv(
 }
 
 void OctomapDemap::demap_callback(
-    const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg, 
+    const sensor_msgs::msg::Image::ConstSharedPtr& depth_msg,
     const geometry_msgs::msg::PoseStamped::ConstSharedPtr& pose_msg)
 {
     auto cv_ptr = cv_bridge::toCvCopy(depth_msg, encoding);
@@ -231,7 +232,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
 
     auto start = this->now();
-    
+
 #ifdef CUDA
     cudaMemcpy(gpu_depth ,depth.ptr(), depth_size, cudaMemcpyHostToDevice);
 
@@ -266,7 +267,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
             if(d == 0)
                 continue;
-                
+
             p.setX((j - cx) * d / fx);
             p.setY((i - cy) * d / fy);
             p.setZ(d);
@@ -300,7 +301,7 @@ bool OctomapDemap::read_ocmap()
         octomap::OcTree *octree = dynamic_cast<octomap::OcTree*>(tree);
         ocmap = std::shared_ptr<octomap::OcTree>(octree);
     }
-    else 
+    else
         return false;
 
     if(!ocmap)
@@ -331,7 +332,7 @@ bool OctomapDemap::save_ocmap()
         if (!ocmap->write(filename))
             return false;
     }
-    else 
+    else
         return false;
 
     return true;
