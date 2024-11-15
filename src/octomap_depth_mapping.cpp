@@ -214,7 +214,14 @@ void OctomapDemap::demap_callback(
     const geometry_msgs::msg::PoseStamped::ConstSharedPtr& pose_msg)
 {
     auto cv_ptr = cv_bridge::toCvCopy(depth_msg, encoding);
-    update_map(cv_ptr->image, pose_msg->pose);
+
+    if (encoding == "mono8")
+        update_map<uint8_t>(cv_ptr->image, pose_msg->pose);
+    else if (encoding == "mono16")
+        update_map<uint16_t>(cv_ptr->image, pose_msg->pose);
+    else
+        assert(false && "Invalid encoding!");
+
     publish_all();
 }
 
@@ -225,6 +232,7 @@ void OctomapDemap::publish_all()
     octomap_publisher_->publish(msg);
 }
 
+template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
     tf2::Transform t;
@@ -259,7 +267,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
     for(int i = 0; i < depth.rows; i+=padding)
     {
-        const ushort* row = depth.ptr<ushort>(i);
+        const T* row = depth.ptr<T>(i);
 
         for(int j = 0; j < depth.cols; j+=padding)
         {

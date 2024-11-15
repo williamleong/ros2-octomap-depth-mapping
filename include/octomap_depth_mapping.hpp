@@ -74,6 +74,7 @@ protected:
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr save_srv_;
 
 
+    template<typename T>
     void update_map(const cv::Mat&, const geometry_msgs::msg::Pose&);
 
     void publish_all();
