@@ -98,12 +98,12 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     }
 
     pc_size = pc_count * sizeof(double);
-    depth_size = width*height*sizeof(ushort);
+    depth_size = width*height*sizeof(uint8_t);
 
     RCLCPP_INFO(this->get_logger(), "%d", pc_count);
 
     // allocate memory
-    cudaMalloc<ushort>(&gpu_depth, depth_size);
+    cudaMalloc<uint8_t>(&gpu_depth, depth_size);
     cudaMalloc<double>(&gpu_pc, pc_size);
     pc = (double*)malloc(pc_size);
 

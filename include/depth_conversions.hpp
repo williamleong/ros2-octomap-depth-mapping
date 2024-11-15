@@ -12,27 +12,19 @@ namespace octomap_depth_mapping
 #ifdef CUDA
 
 // kinect v2 cuda
-__device__ __forceinline__ void depth_to_meters(ushort raw_depth, double& depth) 
+__device__ __forceinline__ void depth_to_meters(ushort raw_depth, double& depth)
 {
-    if(raw_depth > 6408)
-    {
-        depth = ((2.5-0.9)/(15800.0-6408.0))*raw_depth;
-    }        
-    else
-        depth = 0;
+    static constexpr auto DEPTH_DIVISOR = 255.0 / 10.0; //depth range from 0 to 10, scaled from 0 to 255
+    depth = (raw_depth == 255) ? 0 : raw_depth / DEPTH_DIVISOR;
 }
 
 #else
 
 // kinect v2
-inline double depth_to_meters(ushort raw_depth) 
+inline double depth_to_meters(ushort raw_depth)
 {
-    if(raw_depth > 6408)
-    {
-        return ((2.5-0.9)/(15800.0-6408.0))*raw_depth;
-    }        
-
-    return 0;
+    static constexpr auto DEPTH_DIVISOR = 255.0 / 10.0; //depth range from 0 to 10, scaled from 0 to 255
+    return (raw_depth == 255) ? 0 : raw_depth / DEPTH_DIVISOR;
 }
 
 #endif
