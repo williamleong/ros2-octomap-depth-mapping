@@ -40,7 +40,7 @@ protected:
     double fy;
     double cx;
     double cy;
-    double limit;
+    double max_distance;
     int padding;
     int width;
     int height;

@@ -25,7 +25,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     fy(524),
     cx(316.8),
     cy(238.5),
-    limit(10.0),
+    max_distance(10.0),
     padding(1),
     width(640),
     height(480),
@@ -38,7 +38,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     fy = this->declare_parameter("sensor_model/fy", fy);
     cx = this->declare_parameter("sensor_model/cx", cx);
     cy = this->declare_parameter("sensor_model/cy", cy);
-    limit = this->declare_parameter("sensor_model/limit", limit);
+    max_distance = this->declare_parameter("output/max_distance", max_distance);
     frame_id = this->declare_parameter("frame_id", frame_id);
     padding = this->declare_parameter("padding", padding);
     filename = this->declare_parameter("filename", filename);
@@ -124,7 +124,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/miss : " << probMiss);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/min : " << thresMin);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/max : " << thresMax);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/limit : " << limit);
+    RCLCPP_INFO_STREAM(this->get_logger(), "output/max_distance : " << max_distance);
     RCLCPP_INFO_STREAM(this->get_logger(), "resolution : " << resolution);
     RCLCPP_INFO_STREAM(this->get_logger(), "encoding : " << encoding);
     RCLCPP_INFO_STREAM(this->get_logger(), "width : " << width);
@@ -238,7 +238,7 @@ void OctomapDemap::publish_all()
 template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
-    static const auto LIMIT_SQUARED = limit * limit;
+    static const auto LIMIT_SQUARED = max_distance * max_distance;
 
     tf2::Transform t;
     tf2::fromMsg(pose, t);
