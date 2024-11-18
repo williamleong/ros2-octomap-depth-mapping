@@ -25,6 +25,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     fy(524),
     cx(316.8),
     cy(238.5),
+    limit(10.0),
     padding(1),
     width(640),
     height(480),
@@ -37,6 +38,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     fy = this->declare_parameter("sensor_model/fy", fy);
     cx = this->declare_parameter("sensor_model/cx", cx);
     cy = this->declare_parameter("sensor_model/cy", cy);
+    limit = this->declare_parameter("sensor_model/limit", limit);
     frame_id = this->declare_parameter("frame_id", frame_id);
     padding = this->declare_parameter("padding", padding);
     filename = this->declare_parameter("filename", filename);
@@ -98,12 +100,12 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     }
 
     pc_size = pc_count * sizeof(double);
-    depth_size = width*height*sizeof(ushort);
+    depth_size = width*height*sizeof(uint8_t);
 
     RCLCPP_INFO(this->get_logger(), "%d", pc_count);
 
     // allocate memory
-    cudaMalloc<ushort>(&gpu_depth, depth_size);
+    cudaMalloc<uint8_t>(&gpu_depth, depth_size);
     cudaMalloc<double>(&gpu_pc, pc_size);
     pc = (double*)malloc(pc_size);
 
@@ -122,6 +124,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/miss : " << probMiss);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/min : " << thresMin);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/max : " << thresMax);
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/limit : " << limit);
     RCLCPP_INFO_STREAM(this->get_logger(), "resolution : " << resolution);
     RCLCPP_INFO_STREAM(this->get_logger(), "encoding : " << encoding);
     RCLCPP_INFO_STREAM(this->get_logger(), "width : " << width);
@@ -235,6 +238,8 @@ void OctomapDemap::publish_all()
 template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
+    static const auto LIMIT_SQUARED = limit * limit;
+
     tf2::Transform t;
     tf2::fromMsg(pose, t);
     octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
@@ -259,8 +264,15 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
     for(int i = 0, n = pc_count-3; i < n; i+=3)
     {
-        if(pc[i] == 0 && pc[i+1] == 0 && pc[i+2] == 0) { continue; }
-        ocmap->insertRay(origin, octomap::point3d(pc[i], pc[i+1], pc[i+2]));
+        // if(pc[i] == 0 && pc[i+1] == 0 && pc[i+2] == 0) { continue; }
+
+        const auto p = octomap::point3d(pc[i], pc[i+1], pc[i+2]);
+        const auto pNormSq = p.norm_sq();
+
+        if (pNormSq == 0 || pNormSq > LIMIT_SQUARED)
+            continue;
+
+        ocmap->insertRay(origin, p);
     }
 #else
     tf2::Vector3 p;
@@ -279,6 +291,10 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
             p.setX((j - cx) * d / fx);
             p.setY((i - cy) * d / fy);
             p.setZ(d);
+
+            if (p.length2() > LIMIT_SQUARED)
+                continue;
+
             p = t(p);
 
             ocmap->insertRay(origin, octomap::point3d(p.getX(), p.getY(), p.getZ()));

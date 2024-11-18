@@ -40,7 +40,8 @@ protected:
     double fy;
     double cx;
     double cy;
-    int padding;    
+    double limit;
+    int padding;
     int width;
     int height;
     std::string encoding;
@@ -51,7 +52,7 @@ protected:
     std::shared_ptr<octomap::OcTree> ocmap;
 
 #ifdef CUDA
-    ushort* gpu_depth;
+    uint8_t* gpu_depth;
     double* gpu_pc;
     double* pc;
     int pc_count;
@@ -80,7 +81,7 @@ protected:
     void publish_all();
 
     void demap_callback(
-        const sensor_msgs::msg::Image::ConstSharedPtr&, 
+        const sensor_msgs::msg::Image::ConstSharedPtr&,
         const geometry_msgs::msg::PoseStamped::ConstSharedPtr&);
 
     bool octomap_srv(

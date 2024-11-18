@@ -1,10 +1,10 @@
-#include "cuda_proj.hpp" 
+#include "cuda_proj.hpp"
 #include "depth_conversions.hpp"
 
 namespace octomap_depth_mapping
 {
 
-void project_depth_img(ushort* depth, double* pc, int width, int padding,
+void project_depth_img(uint8_t* depth, double* pc, int width, int padding,
     dim3 grid, dim3 block,
     double fx, double fy, double cx, double cy,
     double r1, double r2, double r3,
@@ -20,7 +20,7 @@ void project_depth_img(ushort* depth, double* pc, int width, int padding,
         t1, t2, t3);
 }
 
-__global__ void project_kernel(ushort* depth, double* pc, int width, int padding,
+__global__ void project_kernel(uint8_t* depth, double* pc, int width, int padding,
     double fx, double fy, double cx, double cy,
     double r1, double r2, double r3,
     double r4, double r5, double r6,

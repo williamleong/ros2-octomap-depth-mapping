@@ -15,23 +15,23 @@ endif()
 
 
 # uncomment this line to use cuda
-#set(USE_CUDA TRUE)
+set(USE_CUDA TRUE)
 # You can change flags depending on your GPU
 set(CUDA_GENCODE_FLAGS
-  -gencode arch=compute_35,code=sm_35 
-  -gencode arch=compute_37,code=sm_37 
-  -gencode arch=compute_50,code=sm_50 
-  -gencode arch=compute_52,code=sm_52 
-  -gencode arch=compute_53,code=sm_53 
-  -gencode arch=compute_60,code=sm_60 
-  -gencode arch=compute_61,code=sm_61 
-  -gencode arch=compute_62,code=sm_62 
-  -gencode arch=compute_70,code=sm_70
-  -gencode arch=compute_72,code=sm_72 
-  -gencode arch=compute_75,code=sm_75 
-  -gencode arch=compute_80,code=sm_80 
-  -gencode arch=compute_86,code=sm_86 
-  -gencode arch=compute_87,code=sm_87 
+  # -gencode arch=compute_35,code=sm_35
+  # -gencode arch=compute_37,code=sm_37
+  # -gencode arch=compute_50,code=sm_50
+  # -gencode arch=compute_52,code=sm_52
+  # -gencode arch=compute_53,code=sm_53
+  # -gencode arch=compute_60,code=sm_60
+  # -gencode arch=compute_61,code=sm_61
+  # -gencode arch=compute_62,code=sm_62
+  # -gencode arch=compute_70,code=sm_70
+  # -gencode arch=compute_72,code=sm_72
+  # -gencode arch=compute_75,code=sm_75
+  # -gencode arch=compute_80,code=sm_80
+  -gencode arch=compute_86,code=sm_86
+  -gencode arch=compute_87,code=sm_87
   -gencode arch=compute_87,code=compute_87)
 
 
@@ -46,17 +46,19 @@ find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(octomap REQUIRED)
 find_package(octomap_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 include_directories(include)
 
 # setup CUDA
 if(USE_CUDA)
   find_package(CUDA REQUIRED)
-  
+
   add_compile_definitions(CUDA)
 
   message("-- CUDA version: ${CUDA_VERSION}")
-  
+
   set(
     CUDA_NVCC_FLAGS
     ${CUDA_NVCC_FLAGS};
@@ -81,7 +83,9 @@ ament_target_dependencies(octomap_demap
   octomap_msgs
   sensor_msgs
   geometry_msgs
-  std_srvs)
+  std_srvs
+  tf2
+  tf2_geometry_msgs)
 
 ament_export_targets(octomap_demap HAS_LIBRARY_TARGET)
 
