@@ -12,6 +12,7 @@
 
 #include "message_filters/subscriber.h"
 #include "message_filters/time_synchronizer.h"
+#include <message_filters/sync_policies/approximate_time.h>
 
 #include "octomap/octomap.h"
 #include "octomap/Pointcloud.h"
@@ -67,8 +68,13 @@ protected:
     message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
     message_filters::Subscriber<geometry_msgs::msg::PoseStamped> pose_sub_;
 
-    std::shared_ptr<message_filters::TimeSynchronizer
-        <sensor_msgs::msg::Image, geometry_msgs::msg::PoseStamped>> sync_;
+    // std::shared_ptr<message_filters::TimeSynchronizer
+    //     <sensor_msgs::msg::Image, geometry_msgs::msg::PoseStamped>> sync_;
+
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image,
+        geometry_msgs::msg::PoseStamped> ApproxTimePolicy;
+
+    std::shared_ptr<message_filters::Synchronizer<ApproxTimePolicy>> sync_;
 
     rclcpp::Service<octomap_msgs::srv::GetOctomap>::SharedPtr octomap_srv_;
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
