@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <mutex>
 
 #include "rclcpp/rclcpp.hpp"
 #include <rclcpp_components/register_node_macro.hpp>
@@ -22,6 +23,7 @@
 
 #include "std_srvs/srv/empty.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
 #include <opencv2/opencv.hpp>
@@ -36,6 +38,16 @@ namespace octomap_depth_mapping
 class OctomapDemap : public rclcpp::Node
 {
 protected:
+    // Intrinsic camera matrix for the raw (distorted) images.
+    //     [fx  0 cx]
+    // K = [ 0 fy cy]
+    //     [ 0  0  1]
+    // Projects 2D points in the camera coordinate frame to 3D pixel
+    // coordinates using the focal lengths (fx, fy) and principal point
+    // (cx, cy).
+    // We only need fx, fy, cx, cy
+    std::mutex kMutex;
+    std::array<double, 9UL> k; // camera intrinsic for projection
 
     double fx;
     double fy;
@@ -65,11 +77,10 @@ protected:
 
     rclcpp::Publisher<octomap_msgs::msg::Octomap>::SharedPtr octomap_publisher_;
 
+    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camerainfo_sub_;
+
     message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
     message_filters::Subscriber<geometry_msgs::msg::PoseStamped> pose_sub_;
-
-    // std::shared_ptr<message_filters::TimeSynchronizer
-    //     <sensor_msgs::msg::Image, geometry_msgs::msg::PoseStamped>> sync_;
 
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image,
         geometry_msgs::msg::PoseStamped> ApproxTimePolicy;
@@ -89,6 +100,8 @@ protected:
     void demap_callback(
         const sensor_msgs::msg::Image::ConstSharedPtr&,
         const geometry_msgs::msg::PoseStamped::ConstSharedPtr&);
+
+    void camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr camerainfo_msg);
 
     bool octomap_srv(
         const std::shared_ptr<octomap_msgs::srv::GetOctomap::Request>,

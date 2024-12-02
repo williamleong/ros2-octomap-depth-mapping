@@ -56,13 +56,10 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     // subs
     depth_sub_.subscribe(this, "image_in", rmw_qos_profile);
     pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
+    camerainfo_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>("camerainfo_in", 10,
+        std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1));
 
     // bind subs with ugly way
-
-
-    // sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image,
-    //     geometry_msgs::msg::PoseStamped>>(depth_sub_, pose_sub_, 3);
-    // message_filters::Synchronizer<ApproxTimePolicy> sync(ApproxTimePolicy(10), depth_sub_, pose_sub_);
     sync_ = std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), depth_sub_, pose_sub_);
     sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
 
@@ -230,6 +227,12 @@ void OctomapDemap::demap_callback(
         assert(false && "Invalid encoding!");
 
     publish_all();
+}
+
+void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr camerainfo_msg)
+{
+    std::lock_guard<std::mutex> lock(kMutex);
+    k = camerainfo_msg->k;
 }
 
 void OctomapDemap::publish_all()
