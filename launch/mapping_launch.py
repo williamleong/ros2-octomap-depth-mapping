@@ -38,7 +38,7 @@ def generate_launch_description():
             remappings=[('image_in', 'depth/rect'),
                         ('pose_in', 'pose'),
                         ('map_out', 'octomap_fullmap'),
-                        ('camerainfo_in', 'depth/camerainfo')],
+                        ('camerainfo_in', 'depth/camera_info')],
             parameters=[{'resolution': LaunchConfiguration('resolution'),
                          'frame_id': LaunchConfiguration('frame_id'),
                          'sensor_model/fx': LaunchConfiguration('sensor_model/fx'),
