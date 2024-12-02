@@ -21,31 +21,26 @@ namespace octomap_depth_mapping
 
 OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string node_name):
     Node(node_name, options),
-    fx(524),
-    fy(524),
-    cx(316.8),
-    cy(238.5),
     max_distance(10.0),
     padding(1),
-    width(640),
-    height(480),
     encoding("mono16"),
     frame_id("map"),
     filename(""),
     save_on_shutdown(false)
 {
-    fx = this->declare_parameter("sensor_model/fx", fx);
-    fy = this->declare_parameter("sensor_model/fy", fy);
-    cx = this->declare_parameter("sensor_model/cx", cx);
-    cy = this->declare_parameter("sensor_model/cy", cy);
     max_distance = this->declare_parameter("output/max_distance", max_distance);
     frame_id = this->declare_parameter("frame_id", frame_id);
-    padding = this->declare_parameter("padding", padding);
     filename = this->declare_parameter("filename", filename);
     encoding = this->declare_parameter("encoding", encoding);
     save_on_shutdown = this->declare_parameter("save_on_shutdown", save_on_shutdown);
-    width = this->declare_parameter("width", width);
-    height = this->declare_parameter("height", height);
+
+    //Set padding based on image encoding
+    if (encoding == "mono8")
+        padding = 1;
+    else if (encoding == "mono16")
+        padding = 2;
+    else
+        assert(false && "Invalid encoding!");
 
     rclcpp::QoS qos(rclcpp::KeepLast(3));
 
@@ -56,13 +51,10 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     // subs
     depth_sub_.subscribe(this, "image_in", rmw_qos_profile);
     pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
+    camerainfo_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>("camerainfo_in", 10,
+        std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1));
 
     // bind subs with ugly way
-
-
-    // sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image,
-    //     geometry_msgs::msg::PoseStamped>>(depth_sub_, pose_sub_, 3);
-    // message_filters::Synchronizer<ApproxTimePolicy> sync(ApproxTimePolicy(10), depth_sub_, pose_sub_);
     sync_ = std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), depth_sub_, pose_sub_);
     sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
 
@@ -120,10 +112,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
 #endif
 
     RCLCPP_INFO(this->get_logger(), "--- Launch Parameters ---");
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fx : " << fx);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fy : " << fy);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cx : " << cx);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cy : " << cy);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/hit : " << probHit);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/miss : " << probMiss);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/min : " << thresMin);
@@ -131,9 +119,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     RCLCPP_INFO_STREAM(this->get_logger(), "output/max_distance : " << max_distance);
     RCLCPP_INFO_STREAM(this->get_logger(), "resolution : " << resolution);
     RCLCPP_INFO_STREAM(this->get_logger(), "encoding : " << encoding);
-    RCLCPP_INFO_STREAM(this->get_logger(), "width : " << width);
-    RCLCPP_INFO_STREAM(this->get_logger(), "height : " << height);
-    RCLCPP_INFO_STREAM(this->get_logger(), "padding : " << padding);
     RCLCPP_INFO_STREAM(this->get_logger(), "frame_id : " << frame_id);
     RCLCPP_INFO_STREAM(this->get_logger(), "filename : " << filename);
     RCLCPP_INFO_STREAM(this->get_logger(), "save_on_shutdown : " << save_on_shutdown);
@@ -232,6 +217,50 @@ void OctomapDemap::demap_callback(
     publish_all();
 }
 
+void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
+{
+    std::lock_guard<std::mutex> lock(cameraInfoMutex);
+
+    if (cameraInfoPtr != nullptr)
+        return;
+
+    cameraInfoPtr = msg;
+
+#ifdef CUDA
+    pc_count = 0;
+    // calculate point count (i can use some math later on, but bruh)
+    for(int i = 0; i < cameraInfoPtr->width; i+=padding)
+    {
+        for(int j = 0; j < cameraInfoPtr->height; j+=padding)
+        {
+            pc_count+=3;
+        }
+    }
+
+    pc_size = pc_count * sizeof(double);
+    depth_size = cameraInfoPtr->width*cameraInfoPtr->height*sizeof(uint8_t);
+
+    RCLCPP_INFO(this->get_logger(), "%d", pc_count);
+
+    // allocate memory
+    cudaMalloc<uint8_t>(&gpu_depth, depth_size);
+    cudaMalloc<double>(&gpu_pc, pc_size);
+    pc = (double*)malloc(pc_size);
+
+    block.x = 32;
+    block.y = 32;
+    grid.x = (cameraInfoPtr->width + block.x - 1) / block.x;
+    grid.y = (cameraInfoPtr->height + block.y - 1) / block.y;
+#endif
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "width : " << cameraInfoPtr->width);
+    RCLCPP_INFO_STREAM(this->get_logger(), "height : " << cameraInfoPtr->height);
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fx : " << cameraInfoPtr->k.at(K_FX_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fy : " << cameraInfoPtr->k.at(K_FY_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cx : " << cameraInfoPtr->k.at(K_CX_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cy : " << cameraInfoPtr->k.at(K_CY_INDEX));
+}
+
 void OctomapDemap::publish_all()
 {
     octomap_msgs::msg::Octomap msg;
@@ -243,6 +272,22 @@ template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
     static const auto LIMIT_SQUARED = max_distance * max_distance;
+
+    //Obtain camera intrinsics
+    double width, height, fx, fy, cx, cy;
+    {
+        std::lock_guard<std::mutex> lock(cameraInfoMutex);
+
+        if (cameraInfoPtr == nullptr)
+            return;
+
+        width = cameraInfoPtr->width;
+        height = cameraInfoPtr->height;
+        fx = cameraInfoPtr->k.at(K_FX_INDEX);
+        fy = cameraInfoPtr->k.at(K_FY_INDEX);
+        cx = cameraInfoPtr->k.at(K_CX_INDEX);
+        cy = cameraInfoPtr->k.at(K_CY_INDEX);
+    }
 
     tf2::Transform t;
     tf2::fromMsg(pose, t);
