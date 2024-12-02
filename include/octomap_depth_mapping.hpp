@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 #include <mutex>
-#include <optional>
 
 #include "rclcpp/rclcpp.hpp"
 #include <rclcpp_components/register_node_macro.hpp>
@@ -54,7 +53,7 @@ protected:
     static constexpr size_t K_CY_INDEX = 5;
 
     std::mutex cameraInfoMutex;
-    std::optional<std::array<double, 9UL>> k = std::nullopt; // camera intrinsic for projection
+    sensor_msgs::msg::CameraInfo::SharedPtr cameraInfoPtr = nullptr;
 
     double max_distance;
     int padding;

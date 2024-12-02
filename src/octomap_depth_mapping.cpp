@@ -116,8 +116,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     RCLCPP_INFO_STREAM(this->get_logger(), "output/max_distance : " << max_distance);
     RCLCPP_INFO_STREAM(this->get_logger(), "resolution : " << resolution);
     RCLCPP_INFO_STREAM(this->get_logger(), "encoding : " << encoding);
-    RCLCPP_INFO_STREAM(this->get_logger(), "width : " << width);
-    RCLCPP_INFO_STREAM(this->get_logger(), "height : " << height);
     RCLCPP_INFO_STREAM(this->get_logger(), "padding : " << padding);
     RCLCPP_INFO_STREAM(this->get_logger(), "frame_id : " << frame_id);
     RCLCPP_INFO_STREAM(this->get_logger(), "filename : " << filename);
@@ -217,19 +215,25 @@ void OctomapDemap::demap_callback(
     publish_all();
 }
 
-void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr camerainfo_msg)
+void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
 {
     std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
-    if (k != std::nullopt)
+    if (cameraInfoPtr != nullptr)
         return;
 
-    k = camerainfo_msg->k;
+    cameraInfoPtr = msg;
 
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fx : " << k->at(K_FX_INDEX));
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fy : " << k->at(K_FY_INDEX));
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cx : " << k->at(K_CX_INDEX));
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cy : " << k->at(K_CY_INDEX));
+    // width = msg->width;
+    // height = msg->height;
+    // k = msg->k;
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "width : " << cameraInfoPtr->width);
+    RCLCPP_INFO_STREAM(this->get_logger(), "height : " << cameraInfoPtr->height);
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fx : " << cameraInfoPtr->k.at(K_FX_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fy : " << cameraInfoPtr->k.at(K_FY_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cx : " << cameraInfoPtr->k.at(K_CX_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cy : " << cameraInfoPtr->k.at(K_CY_INDEX));
 }
 
 void OctomapDemap::publish_all()
@@ -249,13 +253,13 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     {
         std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
-        if (k == std::nullopt)
+        if (cameraInfoPtr == nullptr)
             return;
 
-        fx = k->at(K_FX_INDEX);
-        fy = k->at(K_FY_INDEX);
-        cx = k->at(K_CX_INDEX);
-        cy = k->at(K_CY_INDEX);
+        fx = cameraInfoPtr->k.at(K_FX_INDEX);
+        fy = cameraInfoPtr->k.at(K_FY_INDEX);
+        cx = cameraInfoPtr->k.at(K_CX_INDEX);
+        cy = cameraInfoPtr->k.at(K_CY_INDEX);
     }
 
     tf2::Transform t;
