@@ -47,13 +47,15 @@ protected:
     // coordinates using the focal lengths (fx, fy) and principal point
     // (cx, cy).
     // We only need fx, fy, cx, cy
-    std::mutex kMutex;
+
+    static constexpr size_t K_FX_INDEX = 0;
+    static constexpr size_t K_FY_INDEX = 4;
+    static constexpr size_t K_CX_INDEX = 2;
+    static constexpr size_t K_CY_INDEX = 5;
+
+    std::mutex cameraInfoMutex;
     std::optional<std::array<double, 9UL>> k = std::nullopt; // camera intrinsic for projection
 
-    double fx;
-    double fy;
-    double cx;
-    double cy;
     double max_distance;
     int padding;
     int width;

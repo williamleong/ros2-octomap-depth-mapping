@@ -21,10 +21,6 @@ namespace octomap_depth_mapping
 
 OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string node_name):
     Node(node_name, options),
-    fx(524),
-    fy(524),
-    cx(316.8),
-    cy(238.5),
     max_distance(10.0),
     padding(1),
     width(640),
@@ -34,10 +30,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     filename(""),
     save_on_shutdown(false)
 {
-    fx = this->declare_parameter("sensor_model/fx", fx);
-    fy = this->declare_parameter("sensor_model/fy", fy);
-    cx = this->declare_parameter("sensor_model/cx", cx);
-    cy = this->declare_parameter("sensor_model/cy", cy);
     max_distance = this->declare_parameter("output/max_distance", max_distance);
     frame_id = this->declare_parameter("frame_id", frame_id);
     padding = this->declare_parameter("padding", padding);
@@ -117,10 +109,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
 #endif
 
     RCLCPP_INFO(this->get_logger(), "--- Launch Parameters ---");
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fx : " << fx);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fy : " << fy);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cx : " << cx);
-    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cy : " << cy);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/hit : " << probHit);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/miss : " << probMiss);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/min : " << thresMin);
@@ -231,8 +219,17 @@ void OctomapDemap::demap_callback(
 
 void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr camerainfo_msg)
 {
-    std::lock_guard<std::mutex> lock(kMutex);
+    std::lock_guard<std::mutex> lock(cameraInfoMutex);
+
+    if (k != std::nullopt)
+        return;
+
     k = camerainfo_msg->k;
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fx : " << k->at(K_FX_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/fy : " << k->at(K_FY_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cx : " << k->at(K_CX_INDEX));
+    RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/cy : " << k->at(K_CY_INDEX));
 }
 
 void OctomapDemap::publish_all()
@@ -250,26 +247,16 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     //Obtain camera intrinsics
     double fx, fy, cx, cy;
     {
-        static constexpr size_t FX_INDEX = 0;
-        static constexpr size_t FY_INDEX = 4;
-        static constexpr size_t CX_INDEX = 2;
-        static constexpr size_t CY_INDEX = 5;
-
-        std::lock_guard<std::mutex> lock(kMutex);
+        std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
         if (k == std::nullopt)
             return;
 
-        fx = k->at(FX_INDEX);
-        fy = k->at(FY_INDEX);
-        cx = k->at(CX_INDEX);
-        cy = k->at(CY_INDEX);
+        fx = k->at(K_FX_INDEX);
+        fy = k->at(K_FY_INDEX);
+        cx = k->at(K_CX_INDEX);
+        cy = k->at(K_CY_INDEX);
     }
-
-    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << fx);
-    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << fy);
-    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << cx);
-    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << cy);
 
     tf2::Transform t;
     tf2::fromMsg(pose, t);
