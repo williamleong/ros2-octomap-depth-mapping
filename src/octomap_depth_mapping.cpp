@@ -50,7 +50,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     rclcpp::QoS qos(rclcpp::KeepLast(3));
 
     // pubs
-    octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("map_out", qos);
+    octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("map_out", 3);
 
     auto rmw_qos_profile = qos.get_rmw_qos_profile();
     // subs
@@ -58,8 +58,12 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
 
     // bind subs with ugly way
-    sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image,
-        geometry_msgs::msg::PoseStamped>>(depth_sub_, pose_sub_, 3);
+
+
+    // sync_ = std::make_shared<message_filters::TimeSynchronizer<sensor_msgs::msg::Image,
+    //     geometry_msgs::msg::PoseStamped>>(depth_sub_, pose_sub_, 3);
+    // message_filters::Synchronizer<ApproxTimePolicy> sync(ApproxTimePolicy(10), depth_sub_, pose_sub_);
+    sync_ = std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), depth_sub_, pose_sub_);
     sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
 
     // services
