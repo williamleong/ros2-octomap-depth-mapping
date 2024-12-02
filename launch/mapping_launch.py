@@ -15,8 +15,6 @@ def generate_launch_description():
         DeclareLaunchArgument('encoding', default_value='mono8'),
         DeclareLaunchArgument('resolution', default_value='0.1'),
         DeclareLaunchArgument('padding', default_value='1'),
-        DeclareLaunchArgument('width', default_value='320'),
-        DeclareLaunchArgument('height', default_value='200'),
         DeclareLaunchArgument('frame_id', default_value='world'),
         DeclareLaunchArgument('filename', default_value=''),
         DeclareLaunchArgument('save_on_shutdown', default_value='false'),
@@ -40,9 +38,7 @@ def generate_launch_description():
                          'encoding': LaunchConfiguration('encoding'),
                          'padding': LaunchConfiguration('padding'),
                          'filename': LaunchConfiguration('filename'),
-                         'save_on_shutdown': LaunchConfiguration('save_on_shutdown'),
-                         'width': LaunchConfiguration('width'),
-                         'height': LaunchConfiguration('height')
+                         'save_on_shutdown': LaunchConfiguration('save_on_shutdown')
                         }]
         )
     ])

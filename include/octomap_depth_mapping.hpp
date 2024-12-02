@@ -57,8 +57,6 @@ protected:
 
     double max_distance;
     int padding;
-    int width;
-    int height;
     std::string encoding;
     std::string frame_id;
     std::string filename;

@@ -23,8 +23,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     Node(node_name, options),
     max_distance(10.0),
     padding(1),
-    width(640),
-    height(480),
     encoding("mono16"),
     frame_id("map"),
     filename(""),
@@ -36,8 +34,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     filename = this->declare_parameter("filename", filename);
     encoding = this->declare_parameter("encoding", encoding);
     save_on_shutdown = this->declare_parameter("save_on_shutdown", save_on_shutdown);
-    width = this->declare_parameter("width", width);
-    height = this->declare_parameter("height", height);
 
     rclcpp::QoS qos(rclcpp::KeepLast(3));
 
@@ -224,9 +220,32 @@ void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::Share
 
     cameraInfoPtr = msg;
 
-    // width = msg->width;
-    // height = msg->height;
-    // k = msg->k;
+#ifdef CUDA
+    pc_count = 0;
+    // calculate point count (i can use some math later on, but bruh)
+    for(int i = 0; i < cameraInfoPtr->width; i+=padding)
+    {
+        for(int j = 0; j < cameraInfoPtr->height; j+=padding)
+        {
+            pc_count+=3;
+        }
+    }
+
+    pc_size = pc_count * sizeof(double);
+    depth_size = cameraInfoPtr->width*cameraInfoPtr->height*sizeof(uint8_t);
+
+    RCLCPP_INFO(this->get_logger(), "%d", pc_count);
+
+    // allocate memory
+    cudaMalloc<uint8_t>(&gpu_depth, depth_size);
+    cudaMalloc<double>(&gpu_pc, pc_size);
+    pc = (double*)malloc(pc_size);
+
+    block.x = 32;
+    block.y = 32;
+    grid.x = (cameraInfoPtr->width + block.x - 1) / block.x;
+    grid.y = (cameraInfoPtr->height + block.y - 1) / block.y;
+#endif
 
     RCLCPP_INFO_STREAM(this->get_logger(), "width : " << cameraInfoPtr->width);
     RCLCPP_INFO_STREAM(this->get_logger(), "height : " << cameraInfoPtr->height);
@@ -249,13 +268,15 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     static const auto LIMIT_SQUARED = max_distance * max_distance;
 
     //Obtain camera intrinsics
-    double fx, fy, cx, cy;
+    double width, height, fx, fy, cx, cy;
     {
         std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
         if (cameraInfoPtr == nullptr)
             return;
 
+        width = cameraInfoPtr->width;
+        height = cameraInfoPtr->height;
         fx = cameraInfoPtr->k.at(K_FX_INDEX);
         fy = cameraInfoPtr->k.at(K_FY_INDEX);
         cx = cameraInfoPtr->k.at(K_CX_INDEX);
