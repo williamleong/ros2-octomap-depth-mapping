@@ -247,6 +247,30 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 {
     static const auto LIMIT_SQUARED = max_distance * max_distance;
 
+    //Obtain camera intrinsics
+    double fx, fy, cx, cy;
+    {
+        static constexpr size_t FX_INDEX = 0;
+        static constexpr size_t FY_INDEX = 4;
+        static constexpr size_t CX_INDEX = 2;
+        static constexpr size_t CY_INDEX = 5;
+
+        std::lock_guard<std::mutex> lock(kMutex);
+
+        if (k == std::nullopt)
+            return;
+
+        fx = k->at(FX_INDEX);
+        fy = k->at(FY_INDEX);
+        cx = k->at(CX_INDEX);
+        cy = k->at(CY_INDEX);
+    }
+
+    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << fx);
+    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << fy);
+    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << cx);
+    RCLCPP_INFO_STREAM(this->get_logger(), "update_map : " << cy);
+
     tf2::Transform t;
     tf2::fromMsg(pose, t);
     octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);

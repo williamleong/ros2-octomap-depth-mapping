@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <mutex>
+#include <optional>
 
 #include "rclcpp/rclcpp.hpp"
 #include <rclcpp_components/register_node_macro.hpp>
@@ -47,7 +48,7 @@ protected:
     // (cx, cy).
     // We only need fx, fy, cx, cy
     std::mutex kMutex;
-    std::array<double, 9UL> k; // camera intrinsic for projection
+    std::optional<std::array<double, 9UL>> k = std::nullopt; // camera intrinsic for projection
 
     double fx;
     double fy;
