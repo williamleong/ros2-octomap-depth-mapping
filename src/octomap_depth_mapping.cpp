@@ -30,10 +30,17 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
 {
     max_distance = this->declare_parameter("output/max_distance", max_distance);
     frame_id = this->declare_parameter("frame_id", frame_id);
-    padding = this->declare_parameter("padding", padding);
     filename = this->declare_parameter("filename", filename);
     encoding = this->declare_parameter("encoding", encoding);
     save_on_shutdown = this->declare_parameter("save_on_shutdown", save_on_shutdown);
+
+    //Set padding based on image encoding
+    if (encoding == "mono8")
+        padding = 1;
+    else if (encoding == "mono16")
+        padding = 2;
+    else
+        assert(false && "Invalid encoding!");
 
     rclcpp::QoS qos(rclcpp::KeepLast(3));
 
@@ -112,7 +119,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     RCLCPP_INFO_STREAM(this->get_logger(), "output/max_distance : " << max_distance);
     RCLCPP_INFO_STREAM(this->get_logger(), "resolution : " << resolution);
     RCLCPP_INFO_STREAM(this->get_logger(), "encoding : " << encoding);
-    RCLCPP_INFO_STREAM(this->get_logger(), "padding : " << padding);
     RCLCPP_INFO_STREAM(this->get_logger(), "frame_id : " << frame_id);
     RCLCPP_INFO_STREAM(this->get_logger(), "filename : " << filename);
     RCLCPP_INFO_STREAM(this->get_logger(), "save_on_shutdown : " << save_on_shutdown);

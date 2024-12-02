@@ -56,7 +56,7 @@ protected:
     sensor_msgs::msg::CameraInfo::SharedPtr cameraInfoPtr = nullptr;
 
     double max_distance;
-    int padding;
+    uint8_t padding;
     std::string encoding;
     std::string frame_id;
     std::string filename;

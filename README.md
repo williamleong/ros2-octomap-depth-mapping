@@ -36,12 +36,12 @@ Main mapping and publishing node
 |:---:|:---:|---|
 |`octomap_fullmap`| octomap_msgs/Octomap | generated octomap (orginated at 0,0,0) |
 
-### Subscribed Topics 
+### Subscribed Topics
 |Name|Type|Description|
 |:---:|:---:|---|
 |`depth/rect` | sensor_msgs/Image | rectified depth image see [here](#About-Image-Data) for details |
 | `pose` | geometry_msgs/PoseStamped | pose of the camera relative to world origin |
- 
+
 ### Parameters
 |Name|Default|Type|Description|
 |:---:|:---:|:---:|---|
@@ -55,7 +55,6 @@ Main mapping and publishing node
 |`sensor_model/max` | 0.97 | double | Maximum probability of occupied cell |
 |`encoding` | mono16 | string | Input image encoding |
 |`resolution` | 0.05 | double | Octomap resolution |
-|`padding` | 1 | int | Padding size between pixel during  image projection |
 |`width` | 640 | int | Input image width |
 |`height` | 480 | int | Input image height |
 |`frame_id` | map | string | Octomap ROS frame id |
@@ -88,7 +87,7 @@ In addition, images are assumed to be rectified beforehand; thus no distortion p
 
 ## Cuda
 
-By default cuda is not supported. In order to compile with cuda, uncomment [line](https://github.com/berkealgul/ros2-octomap-depth-mapping/blob/1a8d29c2004f0891bf81fbf1937c6d8b9ced48cf/CMakeLists.txt#L18) at `CMakeLists.txt` 
+By default cuda is not supported. In order to compile with cuda, uncomment [line](https://github.com/berkealgul/ros2-octomap-depth-mapping/blob/1a8d29c2004f0891bf81fbf1937c6d8b9ced48cf/CMakeLists.txt#L18) at `CMakeLists.txt`
 
 ```cmake
 # uncomment this line to use cuda
@@ -100,31 +99,30 @@ This package developed with cuda toolkit 11.4 and supports with [gpu compute cap
 To learn more about cuda device compatibility [look at this link](https://docs.nvidia.com/deploy/cuda-compatibility/index.html)
 
 ## Distance Function
-Every raw depth value in input image needs to be converted into meters before processing further. In this package, this is done at `depth_to_meters` function at 
+Every raw depth value in input image needs to be converted into meters before processing further. In this package, this is done at `depth_to_meters` function at
 [depth_conversions.hpp](https://github.com/berkealgul/ros2-octomap-depth-mapping/blob/master/include/depth_conversions.hpp) file. For our case it is writen according to Kinect
 v2 depth camera, thus you may need to change this function(or cuda function) according the sensor model you have.
 
 ```cpp
-inline double depth_to_meters(ushort raw_depth) 
+inline double depth_to_meters(ushort raw_depth)
 {
     if(raw_depth > 6408)
     {
         return ((2.5-0.9)/(15800.0-6408.0))*raw_depth;
-    }        
+    }
 
     return 0;
 }
 ```
 For cuda users
 ```cpp
-__device__ __forceinline__ void depth_to_meters(ushort raw_depth, double& depth) 
+__device__ __forceinline__ void depth_to_meters(ushort raw_depth, double& depth)
 {
     if(raw_depth > 6408)
     {
         depth = ((2.5-0.9)/(15800.0-6408.0))*raw_depth;
-    }        
+    }
     else
         depth = 0;
 }
 ```
-

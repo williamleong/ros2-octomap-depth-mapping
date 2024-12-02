@@ -14,7 +14,6 @@ def generate_launch_description():
         DeclareLaunchArgument('output/max_distance', default_value='5.0'),
         DeclareLaunchArgument('encoding', default_value='mono8'),
         DeclareLaunchArgument('resolution', default_value='0.1'),
-        DeclareLaunchArgument('padding', default_value='1'),
         DeclareLaunchArgument('frame_id', default_value='world'),
         DeclareLaunchArgument('filename', default_value=''),
         DeclareLaunchArgument('save_on_shutdown', default_value='false'),
@@ -36,7 +35,6 @@ def generate_launch_description():
                          'sensor_model/max': LaunchConfiguration('sensor_model/max'),
                          'output/max_distance': LaunchConfiguration('output/max_distance'),
                          'encoding': LaunchConfiguration('encoding'),
-                         'padding': LaunchConfiguration('padding'),
                          'filename': LaunchConfiguration('filename'),
                          'save_on_shutdown': LaunchConfiguration('save_on_shutdown')
                         }]
