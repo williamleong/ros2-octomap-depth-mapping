@@ -7,7 +7,7 @@ from launch.actions import DeclareLaunchArgument
 
 def generate_launch_description():
     return LaunchDescription([
-        DeclareLaunchArgument('input_prefixes', default_value="['front_left']"), # https://robotics.stackexchange.com/questions/94364/passing-array-of-strings-as-launch-arguments-in-ros2-python-launcher
+        DeclareLaunchArgument('input_prefixes', default_value="['back_right']"), # https://robotics.stackexchange.com/questions/94364/passing-array-of-strings-as-launch-arguments-in-ros2-python-launcher
         DeclareLaunchArgument('sensor_model/hit', default_value='0.7'),
         DeclareLaunchArgument('sensor_model/miss', default_value='0.4'),
         DeclareLaunchArgument('sensor_model/min', default_value='0.12'),
