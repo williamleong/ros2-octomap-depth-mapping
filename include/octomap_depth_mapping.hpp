@@ -38,6 +38,8 @@ namespace octomap_depth_mapping
 class OctomapDemap : public rclcpp::Node
 {
 protected:
+    std::vector<std::string> input_prefixes;
+
     // Intrinsic camera matrix for the raw (distorted) images.
     //     [fx  0 cx]
     // K = [ 0 fy cy]
@@ -77,15 +79,28 @@ protected:
 
     rclcpp::Publisher<octomap_msgs::msg::Octomap>::SharedPtr octomap_publisher_;
 
-    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camerainfo_sub_;
+    // rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camerainfo_sub_;
+    // message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
+    // message_filters::Subscriber<geometry_msgs::msg::PoseStamped> pose_sub_;
 
-    message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
-    message_filters::Subscriber<geometry_msgs::msg::PoseStamped> pose_sub_;
+    using depth_subscriber_t = message_filters::Subscriber<sensor_msgs::msg::Image>;
+    using pose_subscriber_t = message_filters::Subscriber<geometry_msgs::msg::PoseStamped>;
+    using camerainfo_subscriber_t = rclcpp::Subscription<sensor_msgs::msg::CameraInfo>;
+
+    std::vector<std::shared_ptr<depth_subscriber_t>> depthSubscribers;
+    std::vector<std::shared_ptr<pose_subscriber_t>> poseSubscribers;
+    std::vector<camerainfo_subscriber_t::SharedPtr> cameraInfoSubscribers;
 
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image,
         geometry_msgs::msg::PoseStamped> ApproxTimePolicy;
 
-    std::shared_ptr<message_filters::Synchronizer<ApproxTimePolicy>> sync_;
+    using approxtime_filter_t = std::shared_ptr<message_filters::Synchronizer<ApproxTimePolicy>>;
+
+    std::vector<approxtime_filter_t> depthPoseSynchronizers;
+
+    // std::shared_ptr<message_filters::Synchronizer<ApproxTimePolicy>> sync_;
+
+
 
     rclcpp::Service<octomap_msgs::srv::GetOctomap>::SharedPtr octomap_srv_;
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;

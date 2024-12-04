@@ -7,6 +7,7 @@ from launch.actions import DeclareLaunchArgument
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('input_prefixes', default_value="['back_left', 'back_right']"), # https://robotics.stackexchange.com/questions/94364/passing-array-of-strings-as-launch-arguments-in-ros2-python-launcher
         DeclareLaunchArgument('sensor_model/hit', default_value='0.7'),
         DeclareLaunchArgument('sensor_model/miss', default_value='0.4'),
         DeclareLaunchArgument('sensor_model/min', default_value='0.12'),
@@ -23,11 +24,13 @@ def generate_launch_description():
             name='octodm_node',
             # prefix=['gdbserver localhost:3000'],
             output='screen',
-            remappings=[('image_in', 'depth/rect'),
-                        ('pose_in', 'pose'),
-                        ('map_out', 'octomap_fullmap'),
-                        ('camerainfo_in', 'depth/camera_info')],
-            parameters=[{'resolution': LaunchConfiguration('resolution'),
+            remappings=[('map_out', 'octomap_fullmap')],
+            # remappings=[('image_in', 'depth/rect'),
+            #             ('pose_in', 'pose'),
+            #             ('map_out', 'octomap_fullmap'),
+            #             ('camerainfo_in', 'depth/camera_info')],
+            parameters=[{'input_prefixes': LaunchConfiguration('input_prefixes'),
+                         'resolution': LaunchConfiguration('resolution'),
                          'frame_id': LaunchConfiguration('frame_id'),
                          'sensor_model/hit': LaunchConfiguration('sensor_model/hit'),
                          'sensor_model/miss': LaunchConfiguration('sensor_model/miss'),

@@ -28,6 +28,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     filename(""),
     save_on_shutdown(false)
 {
+    input_prefixes = this->declare_parameter("input_prefixes", input_prefixes);
     max_distance = this->declare_parameter("output/max_distance", max_distance);
     frame_id = this->declare_parameter("frame_id", frame_id);
     filename = this->declare_parameter("filename", filename);
@@ -47,16 +48,42 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     // pubs
     octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("map_out", 3);
 
-    auto rmw_qos_profile = qos.get_rmw_qos_profile();
     // subs
-    depth_sub_.subscribe(this, "image_in", rmw_qos_profile);
-    pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
-    camerainfo_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>("camerainfo_in", 10,
-        std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1));
+    auto rmw_qos_profile = qos.get_rmw_qos_profile();
+
+    for (const auto& current_input_prefix : input_prefixes)
+    {
+        //Depth
+        const auto depthTopic = current_input_prefix + "/depth/rect";
+        depthSubscribers.emplace_back(
+            std::make_shared<depth_subscriber_t>(this, depthTopic, rmw_qos_profile));
+
+        //Pose
+        const auto poseTopic = current_input_prefix + "/depth/pose";
+        poseSubscribers.emplace_back(
+            std::make_shared<pose_subscriber_t>(this, poseTopic, rmw_qos_profile));
+
+        //Camera info
+        const auto cameraInfoTopic = current_input_prefix + "/depth/camera_info";
+        cameraInfoSubscribers.emplace_back(
+            this->create_subscription<sensor_msgs::msg::CameraInfo>(cameraInfoTopic, 10,
+                std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1)));
+
+        // Sync depth and pose
+        depthPoseSynchronizers.emplace_back(
+            std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), *depthSubscribers.back(), *poseSubscribers.back()));
+
+        depthPoseSynchronizers.back()->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
+    }
+
+    // depth_sub_.subscribe(this, "image_in", rmw_qos_profile);
+    // pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
+    // camerainfo_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>("camerainfo_in", 10,
+    //     std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1));
 
     // bind subs with ugly way
-    sync_ = std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), depth_sub_, pose_sub_);
-    sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
+    // sync_ = std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), depth_sub_, pose_sub_);
+    // sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
 
     // services
     octomap_srv_ = this->create_service<octomap_msgs::srv::GetOctomap>("get_octomap",
@@ -112,6 +139,10 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
 #endif
 
     RCLCPP_INFO(this->get_logger(), "--- Launch Parameters ---");
+
+    for (const auto& current_input_prefix : input_prefixes)
+        RCLCPP_INFO_STREAM(this->get_logger(), "input_prefix : " << current_input_prefix);
+
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/hit : " << probHit);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/miss : " << probMiss);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/min : " << thresMin);
@@ -274,15 +305,16 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     static const auto LIMIT_SQUARED = max_distance * max_distance;
 
     //Obtain camera intrinsics
-    double width, height, fx, fy, cx, cy;
+    // double width, height, fx, fy, cx, cy;
+    double fx, fy, cx, cy;
     {
         std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
         if (cameraInfoPtr == nullptr)
             return;
 
-        width = cameraInfoPtr->width;
-        height = cameraInfoPtr->height;
+        // width = cameraInfoPtr->width;
+        // height = cameraInfoPtr->height;
         fx = cameraInfoPtr->k.at(K_FX_INDEX);
         fy = cameraInfoPtr->k.at(K_FY_INDEX);
         cx = cameraInfoPtr->k.at(K_CX_INDEX);
