@@ -319,9 +319,9 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
         cy = cameraInfoPtr->k.at(K_CY_INDEX);
     }
 
-    octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
+    const octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
 
-    auto start = this->now();
+    const auto start = this->now();
 
 #ifdef CUDA
     assert(false && "[OctomapDemap::update_map] CUDA implementation not tested and probably broken for now")
@@ -357,7 +357,8 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
         ocmap->insertRay(origin, p);
     }
 #else
-    octomap::pose6d transform(
+
+    const octomap::pose6d transform(
         origin,
         //note that octomath::Quaternion follows w, x, y, z convention
         octomath::Quaternion(
@@ -394,8 +395,9 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
 #endif
 
-    auto end = this->now();
-    auto diff = end - start;
+    const auto end = this->now();
+    const auto diff = end - start;
+
     RCLCPP_INFO(this->get_logger(), "update map time(sec) : %.4f", diff.seconds());
 }
 
