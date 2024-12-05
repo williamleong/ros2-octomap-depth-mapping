@@ -302,7 +302,7 @@ void OctomapDemap::publish_all()
 template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
-    static const auto LIMIT_SQUARED = max_distance * max_distance;
+    static const auto MAX_DISTANCE_SQUARED = max_distance * max_distance;
 
     //Obtain camera intrinsics
     // double width, height, fx, fy, cx, cy;
@@ -373,12 +373,12 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
             p.setY((i - cy) * d / fy);
             p.setZ(d);
 
-            if (p.length2() > LIMIT_SQUARED)
+            if (p.length2() > MAX_DISTANCE_SQUARED)
                 continue;
 
             p = t(p);
 
-            ocmap->insertRay(origin, octomap::point3d(p.getX(), p.getY(), p.getZ()));
+            ocmap->insertRay(origin, octomap::point3d(p.getX(), p.getY(), p.getZ()), MAX_DISTANCE_SQUARED);
         }
     }
 #endif
