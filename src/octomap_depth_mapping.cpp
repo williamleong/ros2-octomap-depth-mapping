@@ -302,8 +302,6 @@ void OctomapDemap::publish_all()
 template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
-    static const auto MAX_DISTANCE_SQUARED = max_distance * max_distance;
-
     //Obtain camera intrinsics
     // double width, height, fx, fy, cx, cy;
     double fx, fy, cx, cy;
@@ -321,13 +319,16 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
         cy = cameraInfoPtr->k.at(K_CY_INDEX);
     }
 
-    tf2::Transform t;
-    tf2::fromMsg(pose, t);
     octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
 
     auto start = this->now();
 
 #ifdef CUDA
+    assert(false && "[OctomapDemap::update_map] CUDA implementation not tested and probably broken for now")
+
+    tf2::Transform t;
+    tf2::fromMsg(pose, t);
+
     cudaMemcpy(gpu_depth ,depth.ptr(), depth_size, cudaMemcpyHostToDevice);
 
     auto b = t.getBasis();
@@ -356,7 +357,18 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
         ocmap->insertRay(origin, p);
     }
 #else
-    tf2::Vector3 p;
+    octomap::pose6d transform(
+        origin,
+        //note that octomath::Quaternion follows w, x, y, z convention
+        octomath::Quaternion(
+            pose.orientation.w,
+            pose.orientation.x,
+            pose.orientation.y,
+            pose.orientation.z)
+    );
+
+    octomap::Pointcloud currentPointCloud;
+    currentPointCloud.reserve(depth.rows * depth.cols);
 
     for(int i = 0; i < depth.rows; i+=padding)
     {
@@ -369,18 +381,17 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
             if(d == 0)
                 continue;
 
-            p.setX((j - cx) * d / fx);
-            p.setY((i - cy) * d / fy);
-            p.setZ(d);
-
-            if (p.length2() > MAX_DISTANCE_SQUARED)
-                continue;
-
-            p = t(p);
-
-            ocmap->insertRay(origin, octomap::point3d(p.getX(), p.getY(), p.getZ()), MAX_DISTANCE_SQUARED);
+            currentPointCloud.push_back(
+                (j - cx) * d / fx, //x
+                (i - cy) * d / fy, //y
+                d                  //z
+            );
         }
     }
+
+    currentPointCloud.transform(transform);
+    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
+
 #endif
 
     auto end = this->now();
