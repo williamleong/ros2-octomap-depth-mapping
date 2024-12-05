@@ -13,6 +13,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # uncomment this line to use cuda
 # set(USE_CUDA TRUE)
