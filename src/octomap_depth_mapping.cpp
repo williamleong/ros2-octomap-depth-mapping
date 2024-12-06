@@ -294,6 +294,9 @@ void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::Share
 
 void OctomapDemap::publish_all()
 {
+    // ocmap->toMaxLikelihood();
+    // ocmap->prune();
+
     octomap_msgs::msg::Octomap msg;
     msg_from_ocmap(msg);
     octomap_publisher_->publish(msg);
@@ -377,7 +380,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
         for(int j = 0; j < depth.cols; j+=padding)
         {
-            const double d = depth_to_meters(row[j]);
+            const double d = depth_to_meters(row[j], max_distance);
 
             if(d == 0)
                 continue;
