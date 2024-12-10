@@ -14,6 +14,12 @@ namespace octomap_depth_mapping
 // kinect v2 cuda
 __device__ __forceinline__ void depth_to_meters(ushort raw_depth, double& depth, const double max_distance)
 {
+    if (raw_depth == 255)
+    {
+        depth = 0;
+        return;
+    }
+
     const auto DEPTH_DIVISOR = 255.0 / max_distance; //depth range from 0 to max_distance, scaled from 0 to 255
     depth = raw_depth / DEPTH_DIVISOR;
 }
