@@ -4,7 +4,7 @@
 namespace octomap_depth_mapping
 {
 
-void project_depth_img(uint8_t* depth, double* pc, int width, int padding,
+void project_depth_img(uint8_t* depth, double* pc, int width, int padding, double max_distance,
     dim3 grid, dim3 block,
     double fx, double fy, double cx, double cy,
     double r1, double r2, double r3,
@@ -12,7 +12,7 @@ void project_depth_img(uint8_t* depth, double* pc, int width, int padding,
     double r7, double r8, double r9,
     double t1, double t2, double t3)
 {
-    project_kernel<<<grid, block>>>(depth, pc, width, padding,
+    project_kernel<<<grid, block>>>(depth, pc, width, padding, max_distance,
         fx, fy, cx, cy,
         r1, r2, r3,
         r4, r5, r6,
@@ -20,7 +20,7 @@ void project_depth_img(uint8_t* depth, double* pc, int width, int padding,
         t1, t2, t3);
 }
 
-__global__ void project_kernel(uint8_t* depth, double* pc, int width, int padding,
+__global__ void project_kernel(uint8_t* depth, double* pc, int width, int padding, double max_distance,
     double fx, double fy, double cx, double cy,
     double r1, double r2, double r3,
     double r4, double r5, double r6,
@@ -36,7 +36,7 @@ __global__ void project_kernel(uint8_t* depth, double* pc, int width, int paddin
     const int pidx = 3*((i/padding) + (width/padding) * (j/padding));
 
     double d;
-    depth_to_meters(depth[idx], d);
+    depth_to_meters(depth[idx], d, max_distance);
 
     if(d == 0)
     {

@@ -111,33 +111,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     ocmap->setClampingThresMin(thresMin);
     ocmap->setClampingThresMax(thresMax);
 
-#ifdef CUDA
-    pc_count = 0;
-    // calculate point count (i can use some math later on, but bruh)
-    for(int i = 0; i < width; i+=padding)
-    {
-        for(int j = 0; j < height; j+=padding)
-        {
-            pc_count+=3;
-        }
-    }
-
-    pc_size = pc_count * sizeof(double);
-    depth_size = width*height*sizeof(uint8_t);
-
-    RCLCPP_INFO(this->get_logger(), "%d", pc_count);
-
-    // allocate memory
-    cudaMalloc<uint8_t>(&gpu_depth, depth_size);
-    cudaMalloc<double>(&gpu_pc, pc_size);
-    pc = (double*)malloc(pc_size);
-
-    block.x = 32;
-    block.y = 32;
-    grid.x = (width + block.x - 1) / block.x;
-    grid.y = (height + block.y - 1) / block.y;
-#endif
-
     RCLCPP_INFO(this->get_logger(), "--- Launch Parameters ---");
 
     for (const auto& current_input_prefix : input_prefixes)
@@ -260,9 +233,9 @@ void OctomapDemap::camerainfo_callback(const sensor_msgs::msg::CameraInfo::Share
 #ifdef CUDA
     pc_count = 0;
     // calculate point count (i can use some math later on, but bruh)
-    for(int i = 0; i < cameraInfoPtr->width; i+=padding)
+    for(uint32_t i = 0; i < cameraInfoPtr->width; i+=padding)
     {
-        for(int j = 0; j < cameraInfoPtr->height; j+=padding)
+        for(uint32_t j = 0; j < cameraInfoPtr->height; j+=padding)
         {
             pc_count+=3;
         }
@@ -306,16 +279,14 @@ template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
     //Obtain camera intrinsics
-    // double width, height, fx, fy, cx, cy;
-    double fx, fy, cx, cy;
+    double width, fx, fy, cx, cy;
     {
         std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
         if (cameraInfoPtr == nullptr)
             return;
 
-        // width = cameraInfoPtr->width;
-        // height = cameraInfoPtr->height;
+        width = cameraInfoPtr->width;
         fx = cameraInfoPtr->k.at(K_FX_INDEX);
         fy = cameraInfoPtr->k.at(K_FY_INDEX);
         cx = cameraInfoPtr->k.at(K_CX_INDEX);
@@ -324,10 +295,12 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
     const octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
 
+    octomap::Pointcloud currentPointCloud;
+    currentPointCloud.reserve(depth.rows * depth.cols);
+
     const auto start = this->now();
 
 #ifdef CUDA
-    assert(false && "[OctomapDemap::update_map] CUDA implementation not tested and probably broken for now")
 
     tf2::Transform t;
     tf2::fromMsg(pose, t);
@@ -337,7 +310,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     auto b = t.getBasis();
     auto o = t.getOrigin();
 
-  	project_depth_img(gpu_depth, gpu_pc, width, padding,
+  	project_depth_img(gpu_depth, gpu_pc, width, padding, max_distance,
         grid, block,
         fx, fy, cx, cy,
         b.getRow(0).getX(), b.getRow(0).getY(), b.getRow(0).getZ(),
@@ -349,16 +322,11 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
     for(int i = 0, n = pc_count-3; i < n; i+=3)
     {
-        // if(pc[i] == 0 && pc[i+1] == 0 && pc[i+2] == 0) { continue; }
+        if(pc[i] == 0 && pc[i+1] == 0 && pc[i+2] == 0) { continue; }
 
-        const auto p = octomap::point3d(pc[i], pc[i+1], pc[i+2]);
-        const auto pNormSq = p.norm_sq();
-
-        if (pNormSq == 0 || pNormSq > LIMIT_SQUARED)
-            continue;
-
-        ocmap->insertRay(origin, p);
+        currentPointCloud.push_back(octomap::point3d(pc[i], pc[i+1], pc[i+2]));
     }
+
 #else
 
     const octomap::pose6d transform(
@@ -370,9 +338,6 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
             pose.orientation.y,
             pose.orientation.z)
     );
-
-    octomap::Pointcloud currentPointCloud;
-    currentPointCloud.reserve(depth.rows * depth.cols);
 
     for(int i = 0; i < depth.rows; i+=padding)
     {
@@ -394,9 +359,10 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     }
 
     currentPointCloud.transform(transform);
-    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 
 #endif
+
+    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 
     const auto end = this->now();
     const auto diff = end - start;
