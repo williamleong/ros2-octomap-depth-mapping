@@ -16,7 +16,7 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # uncomment this line to use cuda
-# set(USE_CUDA TRUE)
+set(USE_CUDA TRUE)
 # You can change flags depending on your GPU
 set(CUDA_GENCODE_FLAGS
   # -gencode arch=compute_35,code=sm_35
