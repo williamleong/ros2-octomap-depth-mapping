@@ -298,6 +298,9 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     const auto start = this->now();
 
 #ifdef CUDA
+    octomap::Pointcloud currentPointCloud;
+    currentPointCloud.reserve(depth.rows * depth.cols);
+
     tf2::Transform t;
     tf2::fromMsg(pose, t);
 
@@ -319,8 +322,11 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     for(int i = 0, n = pc_count-3; i < n; i+=3)
     {
         if(pc[i] == 0 && pc[i+1] == 0 && pc[i+2] == 0) { continue; }
-        ocmap->insertRay(origin, octomap::point3d(pc[i], pc[i+1], pc[i+2]));
+
+        currentPointCloud.push_back(octomap::point3d(pc[i], pc[i+1], pc[i+2]));
     }
+
+    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 #else
 
     const octomap::pose6d transform(
