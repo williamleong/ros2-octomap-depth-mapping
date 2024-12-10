@@ -295,11 +295,12 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
     const octomap::point3d origin(pose.position.x, pose.position.y, pose.position.z);
 
+    octomap::Pointcloud currentPointCloud;
+    currentPointCloud.reserve(depth.rows * depth.cols);
+
     const auto start = this->now();
 
 #ifdef CUDA
-    octomap::Pointcloud currentPointCloud;
-    currentPointCloud.reserve(depth.rows * depth.cols);
 
     tf2::Transform t;
     tf2::fromMsg(pose, t);
@@ -326,7 +327,6 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
         currentPointCloud.push_back(octomap::point3d(pc[i], pc[i+1], pc[i+2]));
     }
 
-    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 #else
 
     const octomap::pose6d transform(
@@ -338,9 +338,6 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
             pose.orientation.y,
             pose.orientation.z)
     );
-
-    octomap::Pointcloud currentPointCloud;
-    currentPointCloud.reserve(depth.rows * depth.cols);
 
     for(int i = 0; i < depth.rows; i+=padding)
     {
@@ -362,9 +359,10 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     }
 
     currentPointCloud.transform(transform);
-    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 
 #endif
+
+    ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 
     const auto end = this->now();
     const auto diff = end - start;
