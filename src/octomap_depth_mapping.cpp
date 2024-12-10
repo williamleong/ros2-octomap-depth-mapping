@@ -24,7 +24,7 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     max_distance(10.0),
     padding(1),
     encoding("mono16"),
-    frame_id("map"),
+    frame_id("odom"),
     filename(""),
     save_on_shutdown(false)
 {

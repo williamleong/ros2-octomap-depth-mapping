@@ -15,7 +15,7 @@ def generate_launch_description():
         DeclareLaunchArgument('output/max_distance', default_value='20.0'),
         DeclareLaunchArgument('encoding', default_value='mono8'),
         DeclareLaunchArgument('resolution', default_value='0.5'),
-        DeclareLaunchArgument('frame_id', default_value='world'),
+        DeclareLaunchArgument('frame_id', default_value='odom'),
         DeclareLaunchArgument('filename', default_value=''),
         DeclareLaunchArgument('save_on_shutdown', default_value='false'),
         Node(
