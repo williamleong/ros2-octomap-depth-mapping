@@ -279,14 +279,18 @@ template<typename T>
 void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Pose& pose)
 {
     //Obtain camera intrinsics
-    double width, fx, fy, cx, cy;
+    double fx, fy, cx, cy;
+
     {
         std::lock_guard<std::mutex> lock(cameraInfoMutex);
 
         if (cameraInfoPtr == nullptr)
             return;
 
+#ifdef CUDA
         width = cameraInfoPtr->width;
+#endif
+
         fx = cameraInfoPtr->k.at(K_FX_INDEX);
         fy = cameraInfoPtr->k.at(K_FY_INDEX);
         cx = cameraInfoPtr->k.at(K_CX_INDEX);
@@ -345,10 +349,11 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
 
         for(int j = 0; j < depth.cols; j+=padding)
         {
-            const double d = depth_to_meters(row[j], max_distance);
-
-            if(d == 0)
+            // cull values at max range as they may not actually be there
+            if (row[j] == std::numeric_limits<T>::max())
                 continue;
+
+            const double d = depth_to_meters(row[j], max_distance);
 
             currentPointCloud.push_back(
                 (j - cx) * d / fx, //x
