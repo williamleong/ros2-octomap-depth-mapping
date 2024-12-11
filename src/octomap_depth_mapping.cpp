@@ -21,15 +21,19 @@ namespace octomap_depth_mapping
 
 OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string node_name):
     Node(node_name, options),
-    max_distance(10.0),
+    min_z(-2.0),
+    max_z(2.0),
+    max_distance(20.0),
     padding(1),
-    encoding("mono16"),
+    encoding("mono8"),
     frame_id("odom"),
     filename(""),
     save_on_shutdown(false)
 {
     input_prefixes = this->declare_parameter("input_prefixes", input_prefixes);
-    max_distance = this->declare_parameter("output/max_distance", max_distance);
+    max_distance = this->declare_parameter("octomap/max_distance", max_distance);
+    min_z =this->declare_parameter("octomap/min_z", min_z);
+    max_z =this->declare_parameter("octomap/max_z", max_z);
     frame_id = this->declare_parameter("frame_id", frame_id);
     filename = this->declare_parameter("filename", filename);
     encoding = this->declare_parameter("encoding", encoding);
@@ -120,7 +124,9 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/miss : " << probMiss);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/min : " << thresMin);
     RCLCPP_INFO_STREAM(this->get_logger(), "sensor_model/max : " << thresMax);
-    RCLCPP_INFO_STREAM(this->get_logger(), "output/max_distance : " << max_distance);
+    RCLCPP_INFO_STREAM(this->get_logger(), "octomap/max_distance : " << max_distance);
+    RCLCPP_INFO_STREAM(this->get_logger(), "octomap/min_z : " << min_z);
+    RCLCPP_INFO_STREAM(this->get_logger(), "octomap/max_z : " << max_z);
     RCLCPP_INFO_STREAM(this->get_logger(), "resolution : " << resolution);
     RCLCPP_INFO_STREAM(this->get_logger(), "encoding : " << encoding);
     RCLCPP_INFO_STREAM(this->get_logger(), "frame_id : " << frame_id);
@@ -366,6 +372,15 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     currentPointCloud.transform(transform);
 
 #endif
+
+    //Trim point cloud Z axis
+    octomap::point3d lowerBound;
+    octomap::point3d upperBound;
+    currentPointCloud.calcBBX(lowerBound, upperBound);
+    lowerBound.z() = min_z;
+    upperBound.z() = max_z; // TODO SET AS VARIABLES
+
+    currentPointCloud.crop(lowerBound, upperBound);
 
     ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 

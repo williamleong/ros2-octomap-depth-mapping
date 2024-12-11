@@ -57,6 +57,8 @@ protected:
     std::mutex cameraInfoMutex;
     sensor_msgs::msg::CameraInfo::SharedPtr cameraInfoPtr = nullptr;
 
+    double min_z;
+    double max_z;
     double max_distance;
     uint8_t padding;
     std::string encoding;
