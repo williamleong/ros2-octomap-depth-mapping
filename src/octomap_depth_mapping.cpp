@@ -5,7 +5,6 @@
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2/LinearMath/Quaternion.h>
 
-// #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <cv_bridge/cv_bridge.h>
 
@@ -79,15 +78,6 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
 
         depthPoseSynchronizers.back()->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
     }
-
-    // depth_sub_.subscribe(this, "image_in", rmw_qos_profile);
-    // pose_sub_.subscribe(this, "pose_in", rmw_qos_profile);
-    // camerainfo_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>("camerainfo_in", 10,
-    //     std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1));
-
-    // bind subs with ugly way
-    // sync_ = std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), depth_sub_, pose_sub_);
-    // sync_->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
 
     // services
     octomap_srv_ = this->create_service<octomap_msgs::srv::GetOctomap>("get_octomap",

@@ -100,14 +100,9 @@ protected:
 
     std::vector<approxtime_filter_t> depthPoseSynchronizers;
 
-    // std::shared_ptr<message_filters::Synchronizer<ApproxTimePolicy>> sync_;
-
-
-
     rclcpp::Service<octomap_msgs::srv::GetOctomap>::SharedPtr octomap_srv_;
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
     rclcpp::Service<std_srvs::srv::Empty>::SharedPtr save_srv_;
-
 
     template<typename T>
     void update_map(const cv::Mat&, const geometry_msgs::msg::Pose&);
