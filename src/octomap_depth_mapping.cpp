@@ -385,6 +385,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     auto end = this->now();
     const auto projectionDiff = end - start;
 
+    //Insert
     start = this->now();
 
     ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
@@ -398,6 +399,49 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
         insertionDiff.seconds(),
         projectionDiff.seconds() + insertionDiff.seconds()
     );
+
+    //Prune
+    start = this->now();
+
+    octomap::point3d pruneMin(origin.x() - max_distance, origin.y() - max_distance, min_z);
+    octomap::point3d pruneMax(origin.x() + max_distance, origin.y() + max_distance, max_z);
+
+    prune_outside_bbx(pruneMin, pruneMax);
+
+    end = this->now();
+    const auto pruneDiff = end - start;
+
+    RCLCPP_INFO(
+        this->get_logger(), "Prune: %.3f",
+        pruneDiff.seconds()
+    );
+}
+
+//https://github.com/OctoMap/octomap/issues/283
+bool OctomapDemap::prune_outside_bbx(const octomap::point3d& min, octomap::point3d& max)
+{
+    octomap::OcTreeKey minKey, maxKey;
+    if (!ocmap->coordToKeyChecked(min, minKey) || !ocmap->coordToKeyChecked(max, maxKey))
+        assert(false);
+
+    std::vector<std::pair<octomap::OcTreeKey, unsigned int>> keys;
+
+    for(auto iter = ocmap->begin_leafs(), end = ocmap->end_leafs(); iter != end; iter++)
+    {
+        const auto currentKey = iter.getKey();
+        if  (currentKey[0] < minKey[0] || currentKey[1] < minKey[1] || currentKey[2] < minKey[2]
+            || currentKey[0] > maxKey[0] || currentKey[1] > maxKey[1] || currentKey[2] > maxKey[2])
+        {
+            keys.push_back(std::make_pair(currentKey, iter.getDepth()));
+        }
+    }
+
+    for (const auto& currentKey : keys)
+        ocmap->deleteNode(currentKey.first, currentKey.second);
+
+    RCLCPP_INFO(this->get_logger(), "Removed voxels: %ld", keys.size());
+
+    return true;
 }
 
 bool OctomapDemap::read_ocmap()

@@ -118,6 +118,8 @@ protected:
         const sensor_msgs::msg::Image::ConstSharedPtr&,
         const geometry_msgs::msg::PoseStamped::ConstSharedPtr&);
 
+    bool prune_outside_bbx(const octomap::point3d& min, octomap::point3d& max);
+
     void camerainfo_callback(const sensor_msgs::msg::CameraInfo::SharedPtr camerainfo_msg);
 
     bool octomap_srv(
