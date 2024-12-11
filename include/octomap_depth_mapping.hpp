@@ -132,6 +132,10 @@ protected:
 
     inline bool msg_from_ocmap(octomap_msgs::msg::Octomap& msg)
     {
+        // According to documentation, it will be smaller if we do this
+        ocmap->toMaxLikelihood();
+        ocmap->prune();
+
         msg.id = "OcTree";
         msg.header.frame_id = frame_id;
         return octomap_msgs::fullMapToMsg(*ocmap, msg);
