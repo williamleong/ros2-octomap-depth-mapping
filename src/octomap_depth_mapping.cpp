@@ -308,7 +308,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     octomap::Pointcloud currentPointCloud;
     currentPointCloud.reserve(depth.rows * depth.cols);
 
-    const auto start = this->now();
+    auto start = this->now();
 
 #ifdef CUDA
 
@@ -378,16 +378,26 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     octomap::point3d upperBound;
     currentPointCloud.calcBBX(lowerBound, upperBound);
     lowerBound.z() = min_z;
-    upperBound.z() = max_z; // TODO SET AS VARIABLES
+    upperBound.z() = max_z;
 
     currentPointCloud.crop(lowerBound, upperBound);
 
+    auto end = this->now();
+    const auto projectionDiff = end - start;
+
+    start = this->now();
+
     ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
 
-    const auto end = this->now();
-    const auto diff = end - start;
+    end = this->now();
+    const auto insertionDiff = end - start;
 
-    RCLCPP_INFO(this->get_logger(), "update map time(sec) : %.4f", diff.seconds());
+    RCLCPP_INFO(
+        this->get_logger(), "Projection: %.3f Insertion: %.3f Total: %.3f",
+        projectionDiff.seconds(),
+        insertionDiff.seconds(),
+        projectionDiff.seconds() + insertionDiff.seconds()
+    );
 }
 
 bool OctomapDemap::read_ocmap()
