@@ -372,6 +372,7 @@ void OctomapDemap::update_map(const cv::Mat& depth, const geometry_msgs::msg::Po
     auto end = this->now();
     const auto projectionDiff = end - start;
 
+    //Insert point cloud
     start = this->now();
 
     ocmap->insertPointCloud(currentPointCloud, origin, max_distance, false, true);
