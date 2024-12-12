@@ -16,7 +16,7 @@ def generate_launch_description():
         DeclareLaunchArgument('octomap/min_z', default_value='-2.0'),
         DeclareLaunchArgument('octomap/max_z', default_value='5.0'),
         DeclareLaunchArgument('encoding', default_value='mono8'),
-        DeclareLaunchArgument('resolution', default_value='0.2'),
+        DeclareLaunchArgument('resolution', default_value='0.5'),
         DeclareLaunchArgument('frame_id', default_value='odom'),
         DeclareLaunchArgument('filename', default_value=''),
         DeclareLaunchArgument('save_on_shutdown', default_value='false'),
