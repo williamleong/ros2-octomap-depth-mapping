@@ -46,10 +46,12 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
     else
         assert(false && "Invalid encoding!");
 
-    rclcpp::QoS qos(rclcpp::KeepLast(3));
+    static const auto DEFAULT_RMW_DEPTH = 10;
+
+    rclcpp::QoS qos(DEFAULT_RMW_DEPTH);
 
     // pubs
-    octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("map_out", 3);
+    octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("map_out", DEFAULT_RMW_DEPTH);
 
     // subs
     auto rmw_qos_profile = qos.get_rmw_qos_profile();
@@ -69,12 +71,12 @@ OctomapDemap::OctomapDemap(const rclcpp::NodeOptions &options, const std::string
         //Camera info
         const auto cameraInfoTopic = current_input_prefix + "/depth/camera_info";
         cameraInfoSubscribers.emplace_back(
-            this->create_subscription<sensor_msgs::msg::CameraInfo>(cameraInfoTopic, 10,
+            this->create_subscription<sensor_msgs::msg::CameraInfo>(cameraInfoTopic, qos,
                 std::bind(&OctomapDemap::camerainfo_callback, this, ph::_1)));
 
         // Sync depth and pose
         depthPoseSynchronizers.emplace_back(
-            std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(10), *depthSubscribers.back(), *poseSubscribers.back()));
+            std::make_shared<message_filters::Synchronizer<ApproxTimePolicy>>(ApproxTimePolicy(DEFAULT_RMW_DEPTH), *depthSubscribers.back(), *poseSubscribers.back()));
 
         depthPoseSynchronizers.back()->registerCallback(std::bind(&OctomapDemap::demap_callback, this, ph::_1, ph::_2));
     }
