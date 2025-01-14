@@ -447,4 +447,22 @@ bool OctomapDemap::save_ocmap()
 
 } // octomap_depth_mapping
 
+int main(int argc, char* argv[])
+{
+    rclcpp::init(argc, argv);
+
+    rclcpp::NodeOptions options;
+    const std::string node_name = "octodm_node";
+
+    auto octomap_node = std::make_shared<octomap_depth_mapping::OctomapDemap>(options, node_name);
+
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(octomap_node);
+    executor.spin();
+
+    rclcpp::shutdown();
+
+    return 0;
+}
+
 RCLCPP_COMPONENTS_REGISTER_NODE(octomap_depth_mapping::OctomapDemap)
